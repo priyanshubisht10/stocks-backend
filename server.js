@@ -15,7 +15,7 @@ db.sequelize
   });
 
 db.sequelize
-  .sync({ force: false })
+  .sync({ force: false, alter: true })
   .then(() => {
     console.log('db is synced');
   })
