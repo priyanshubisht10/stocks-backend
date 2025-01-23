@@ -8,16 +8,20 @@ const sequelize = new Sequelize(
   process.env.DB_PASSWORD,
   {
     host: 'localhost',
-    port: '5433',
+    port: process.env.DB_HOST,
     dialect: 'postgres',
   }
 );
 
-const db = {};
-db.Sequelize = Sequelize;
-db.sequelize = sequelize;
+const db = {
+  Sequelize,
+  sequelize,
+};
 
-//after creating models in models import them here too
-db.User = require('../models/userModel')(sequelize, Sequelize);
+// Import models
+const UserModel = require('../models/userModel');
+db.User = UserModel(sequelize, Sequelize);
+
+console.log(UserModel);
 
 module.exports = db;
