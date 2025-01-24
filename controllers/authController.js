@@ -97,7 +97,7 @@ exports.signup = catchasync(async (req, res, next) => {
     pan_number: newUser.pan_number,
     createdat : newUser.createdAt,
     email_type: 'welcome_mail',
-  },5); //5 here is the lowest priotity 1to5
+  }); //5 here is the lowest priotity 1to5
 
   res.status(201).json({
     message: 'signup successfull',
