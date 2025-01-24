@@ -2,8 +2,10 @@ const db = require('../services/db');
 const bcrypt = require('bcrypt');
 const catchasync = require('../utils/catchasync');
 const User = db.User;
+const AppError = require('../utils/Apperror')
 const jwt = require('../middlewares/jwt');
 const panverify = require('../services/panVerification');
+const { addMailJob } = require('../services/mailQueue');
 
 const cookieopt = {
   //2d
@@ -47,6 +49,7 @@ exports.signup = catchasync(async (req, res, next) => {
     email: req.body.email,
     username: req.body.username,
     password: req.body.password,
+    role: req.body.role,
     full_name: req.body.full_name,
     phone_number: req.body.phone_number,
     addressLine1: req.body.addressLine1,
@@ -59,9 +62,18 @@ exports.signup = catchasync(async (req, res, next) => {
     pan_number: req.body.pan_number,
   };
 
-  if (!email || !username || !password || !full_name) {
+  if (
+    !userdata.email ||
+    !userdata.username ||
+    !userdata.role ||
+    !userdata.password ||
+    !userdata.full_name
+  ) {
     return next(
-      new AppError('Email, username, password, and full name are required', 400)
+      new AppError(
+        'Email, username, role,password, and full name are required',
+        400
+      )
     );
   }
 
@@ -75,7 +87,17 @@ exports.signup = catchasync(async (req, res, next) => {
   const authtoken = jwt.sendtoken(newUser.id);
   res.cookie('jwt', authtoken, cookieopt);
 
+  console.log(newUser.createdAt)
+  //console.log(Date.now)
   //add mail queue here
+  await addMailJob({
+    email: newUser.email,
+    username: newUser.username,
+    full_name: newUser.full_name,
+    pan_number: newUser.pan_number,
+    createdat : newUser.createdAt,
+    email_type: 'welcome_mail',
+  },5); //5 here is the lowest priotity 1to5
 
   res.status(201).json({
     message: 'signup successfull',

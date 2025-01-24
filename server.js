@@ -19,7 +19,7 @@ db.sequelize
   .then(() => {
     console.log('db is synced');
   })
-  .catch(() => {
+  .catch((err) => {
     console.error('Error syncing database:', err);
   });
 
