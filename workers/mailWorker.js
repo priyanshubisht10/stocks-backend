@@ -1,25 +1,22 @@
 const { Worker, Queue } = require('bullmq');
 require('dotenv').config({ path: '../config.env' });
-const redis = require('ioredis');
 const { sendEmail } = require('../services/mailService');
 
-const redisConnection = new redis({
-  maxRetriesPerRequest: null,
-  enableReadyCheck: false,
-});
+const redisConnection = require('../services/redis');
+
 const dlqueue = new Queue('deadLetterQueue', { connection: redisConnection });
 const emailWorker = new Worker(
   'mailQueue',
-    async (job) => {
-      console.log("Worker started processing job:");
-      try {
+  async (job) => {
+    console.log("Worker started processing job:");
+    try {
       console.log("entered");
-        await sendEmail(job.data);
-      } catch (error) {
-        console.error(`Error sending email for job ${job.id}:`, error.message);
-        throw error;
-      }
-    },
+      await sendEmail(job.data);
+    } catch (error) {
+      console.error(`Error sending email for job ${job.id}:`, error.message);
+      throw error;
+    }
+  },
   {
     connection: redisConnection,
     settings: {

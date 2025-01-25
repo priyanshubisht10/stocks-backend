@@ -81,23 +81,25 @@ exports.signup = catchasync(async (req, res, next) => {
   if (existingUser) {
     return next(new AppError('An account with this email already exists', 400));
   }
-
+  console.log("newUser");
   const newUser = await User.create(userdata);
 
   const authtoken = jwt.sendtoken(newUser.id);
   res.cookie('jwt', authtoken, cookieopt);
 
-  console.log(newUser.createdAt)
+  // console.log(newUser.createdAt)
   //console.log(Date.now)
-  //add mail queue here
-  await addMailJob({
-    email: newUser.email,
-    username: newUser.username,
-    full_name: newUser.full_name,
-    pan_number: newUser.pan_number,
-    createdat : newUser.createdAt,
-    email_type: 'welcome_mail',
-  }); //5 here is the lowest priotity 1to5
+
+  // (removed mail logic to work easily in development)
+
+  // await addMailJob({
+  //   email: newUser.email,
+  //   username: newUser.username,
+  //   full_name: newUser.full_name,
+  //   pan_number: newUser.pan_number,
+  //   createdat : newUser.createdAt,
+  //   email_type: 'welcome_mail',
+  // }); //5 here is the lowest priotity 1to5
 
   res.status(201).json({
     message: 'signup successfull',

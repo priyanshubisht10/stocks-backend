@@ -12,10 +12,10 @@ module.exports = (sequelize, DataTypes) => {
         primaryKey: true,
         allowNull: false,
       },
-      role : {
-        type : DataTypes.ENUM('admin','user'),
-        allowNull : false,
-        default : 'user'
+      role: {
+        type: DataTypes.ENUM('admin', 'user'),
+        allowNull: false,
+        default: 'user'
       },
       email: {
         type: DataTypes.STRING,

@@ -1,6 +1,10 @@
 //db.js
 const { Sequelize } = require('sequelize');
 
+// Import models
+const UserModel = require('../models/userModel');
+const StockModel = require('../models/stockModel');
+
 console.log(process.env.DB_NAME);
 const sequelize = new Sequelize(
   process.env.DB_NAME,
@@ -18,10 +22,7 @@ const db = {
   sequelize,
 };
 
-// Import models
-const UserModel = require('../models/userModel');
 db.User = UserModel(sequelize, Sequelize);
-
-console.log(UserModel);
+db.Stock = StockModel(sequelize, Sequelize);
 
 module.exports = db;
