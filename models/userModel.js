@@ -2,7 +2,6 @@ const bcrypt = require('bcrypt');
 
 //userModel.js
 module.exports = (sequelize, DataTypes) => {
-  console.log('defining user model');
   const User = sequelize.define(
     'User',
     {
@@ -105,10 +104,10 @@ module.exports = (sequelize, DataTypes) => {
           },
         },
       },
-      account_balance: {
-        type: DataTypes.FLOAT,
-        defaultValue: 0.0,
-      },
+      // account_balance: {
+      //   type: DataTypes.FLOAT,
+      //   defaultValue: 0.0,
+      // },
       total_portfolio_value: {
         type: DataTypes.FLOAT,
         defaultValue: 0.0,
@@ -118,9 +117,6 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: 'active',
       },
     },
-    {
-      tableName: 'users',
-    }
   );
 
   // Hash password before creating or updating user

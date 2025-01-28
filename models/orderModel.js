@@ -3,6 +3,12 @@ const { sequelize } = require('../services/db');
 
 module.exports = (sequelize, DataTypes) => {
    const Order = sequelize.define('Order', {
+      order_id: {
+         type: DataTypes.UUID,
+         defaultValue: DataTypes.UUIDV4,
+         primaryKey: true,
+         allowNull: false,
+      },
       stock_symbol: {
          type: DataTypes.STRING,
          allowNull: false,
