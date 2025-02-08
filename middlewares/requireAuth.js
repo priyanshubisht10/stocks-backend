@@ -21,17 +21,17 @@ exports.protect = catchasync(async (req, res, next) => {
 
   const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
 
+  //All attributes are selected since we may have to handle schema changes
   const currentuser = await User.findOne({
     where: { id: decoded.id },
-    attributes: [
-      'id',
-      'email',
-      'role',
-      'username',
-      'full_name',
-      'wishlist',
-      'account_balance',
-    ],
+    // attributes: [
+    //   'id',
+    //   'email',
+    //   'role',
+    //   'username',
+    //   'full_name',
+    //   'wishlist',
+    // ],
   });
 
   if (!currentuser) {

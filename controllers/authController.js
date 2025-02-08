@@ -5,7 +5,7 @@ const User = db.User;
 const AppError = require('../utils/Apperror')
 const jwt = require('../middlewares/jwt');
 const panverify = require('../services/panVerification');
-const { addMailJob } = require('../services/mailQueue');
+const addJobToQueue = require('../services/queue');
 
 const cookieopt = {
   //2d
@@ -62,47 +62,32 @@ exports.signup = catchasync(async (req, res, next) => {
     pan_number: req.body.pan_number,
   };
 
-  if (
-    !userdata.email ||
-    !userdata.username ||
-    !userdata.role ||
-    !userdata.password ||
-    !userdata.full_name
-  ) {
-    return next(
-      new AppError(
-        'Email, username, role,password, and full name are required',
-        400
-      )
-    );
+  if (!userdata.email || !userdata.username || !userdata.role || !userdata.password || !userdata.full_name) {
+    return next(new AppError('Email, username, role, password, and full name are required', 400));
   }
 
   const existingUser = await User.findOne({ where: { email: userdata.email } });
   if (existingUser) {
     return next(new AppError('An account with this email already exists', 400));
   }
-  console.log("newUser");
-  const newUser = await User.create(userdata);
 
+  // console.log("newUser");
+  const newUser = await User.create(userdata);
   const authtoken = jwt.sendtoken(newUser.id);
   res.cookie('jwt', authtoken, cookieopt);
 
-  // console.log(newUser.createdAt)
-  //console.log(Date.now)
-
-  // (removed mail logic to work easily in development)
-
-  // await addMailJob({
+  // await addJobToQueue('mailQueue', 'sendMail', {
   //   email: newUser.email,
   //   username: newUser.username,
   //   full_name: newUser.full_name,
   //   pan_number: newUser.pan_number,
-  //   createdat : newUser.createdAt,
+  //   createdat: newUser.createdAt,
   //   email_type: 'welcome_mail',
-  // }); //5 here is the lowest priotity 1to5
+  // }, { attempts: 2, backoff: 60000 });
 
   res.status(201).json({
-    message: 'signup successfull',
+    status: 'success',
+    message: 'Signup successful.',
     data: {
       user: newUser.username,
       token: authtoken,

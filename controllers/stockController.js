@@ -20,14 +20,16 @@ exports.listNewStock = catchAsync(async (req, res, next) => {
     exchange: req.body.exchange,
   };
 
+  console.log(stockData)
+
   if (
-    !stock_symbol ||
-    !company_name ||
-    !company_description ||
-    !current_price ||
-    !opening_price ||
-    !closing_price ||
-    !exchange
+    !stockData.stock_symbol ||
+    !stockData.company_name ||
+    !stockData.company_description ||
+    !stockData.current_price ||
+    !stockData.opening_price ||
+    !stockData.closing_price ||
+    !stockData.exchange
   ) {
     return next(new AppError('Please provide all required fields.', 400));
   }
