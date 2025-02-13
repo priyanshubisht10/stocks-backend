@@ -8,7 +8,7 @@ const authMiddleware = require('../middlewares/requireAuth');
 router.post(
   '/place-order/',
   authMiddleware.protect,
-  authMiddleware.restrictTo('user'),
+  //authMiddleware.restrictTo('user'),
   orderController.placeOrder
 );
 
