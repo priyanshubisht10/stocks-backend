@@ -4,10 +4,10 @@ const catchAsync = require('../utils/catchasync');
 const AppError = require('../utils/Apperror');
 
 const queues = {
-  'market-buy': new Queue('market-buy', { connection: redisConnection }),
-  'market-sell': new Queue('market-sell', { connection: redisConnection }),
-  'limit-buy': new Queue('limit-buy', { connection: redisConnection }),
-  'limit-sell': new Queue('limit-sell', { connection: redisConnection }),
+  // 'market-buy': new Queue('market-buy', { connection: redisConnection }),
+  // 'market-sell': new Queue('market-sell', { connection: redisConnection }),
+  // 'limit-buy': new Queue('limit-buy', { connection: redisConnection }),
+  // 'limit-sell': new Queue('limit-sell', { connection: redisConnection }),
   'mailQueue': new Queue('mailQueue', { connection: redisConnection })
 };
 
