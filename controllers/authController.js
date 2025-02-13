@@ -2,7 +2,8 @@ const db = require('../services/db');
 const bcrypt = require('bcrypt');
 const catchasync = require('../utils/catchasync');
 const User = db.User;
-const AppError = require('../utils/Apperror')
+const DematAccount = db.DematAccount;
+const AppError = require('../utils/Apperror');
 const jwt = require('../middlewares/jwt');
 const panverify = require('../services/panVerification');
 const addJobToQueue = require('../services/queue');
@@ -62,8 +63,19 @@ exports.signup = catchasync(async (req, res, next) => {
     pan_number: req.body.pan_number,
   };
 
-  if (!userdata.email || !userdata.username || !userdata.role || !userdata.password || !userdata.full_name) {
-    return next(new AppError('Email, username, role, password, and full name are required', 400));
+  if (
+    !userdata.email ||
+    !userdata.username ||
+    !userdata.role ||
+    !userdata.password ||
+    !userdata.full_name
+  ) {
+    return next(
+      new AppError(
+        'Email, username, role, password, and full name are required',
+        400
+      )
+    );
   }
 
   const existingUser = await User.findOne({ where: { email: userdata.email } });
@@ -73,6 +85,11 @@ exports.signup = catchasync(async (req, res, next) => {
 
   // console.log("newUser");
   const newUser = await User.create(userdata);
+  const newDematAccount = await DematAccount.create({
+    user_id: newUser.id,
+    balance: 0,
+  });
+
   const authtoken = jwt.sendtoken(newUser.id);
   res.cookie('jwt', authtoken, cookieopt);
 
