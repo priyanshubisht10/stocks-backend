@@ -24,5 +24,5 @@ db.sequelize
   });
 
 const server = app.listen(port, 'localhost', () => {
-  console.log(`Server is running at ${port}`);
+  console.log(`Server running at`, port);
 });

@@ -49,6 +49,26 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
 
     await redis.publish('order_added', JSON.stringify({ stock_symbol }));
     // console.log(`Published event for new order: ${stock_symbol}`);
+  } else if (order_mode === 'limit') {
+    // Handle limit order
+    const redisSetKey = `limit-${order_type}-${stock_symbol}`; // e.g., "limit-buy-AAPL" or "limit-sell-AAPL"
+    const orderData = {
+      order_id: newOrder.order_id,
+      stock_symbol: newOrder.stock_symbol,
+      user: newOrder.user,
+      price: parseFloat(newOrder.price), // Convert price to a number
+      quantity: newOrder.quantity,
+      timeStamp: newOrder.created_at.getTime(), // Convert timestamp to milliseconds
+    };
+
+    // Calculate the score based on priority: price > timestamp > quantity
+    const score = (orderData.price * 1e12) + (orderData.timeStamp * 1e6) + orderData.quantity;
+
+    // Add order to Redis Sorted Set
+    await redis.zadd(redisSetKey, score, JSON.stringify(orderData));
+
+    // Publish an event to trigger matching
+    await redis.publish('order_added_limit', JSON.stringify({ stock_symbol }));
   }
 
   res.status(201).json({
