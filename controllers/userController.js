@@ -10,3 +10,20 @@ exports.getUsers = catchasync(async (req, res, next) => {
     data: users,
   });
 });
+
+exports.getUserProfile = catchasync(async (req, res, next) => {
+  const user = await User.findByPk(req.user.id, {
+    attributes: {
+      exclude: ['password'], // Exclude password from the response
+    },
+  });
+
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'User not found' });
+  }
+
+  res.status(200).json({
+    success: true,
+    data: user,
+  });
+});

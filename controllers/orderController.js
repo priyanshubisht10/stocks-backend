@@ -2,7 +2,7 @@ const Order = require('../services/db').Order;
 const { v4: uuidv4 } = require('uuid');
 const catchAsync = require('../utils/catchasync');
 const addJobToQueue = require('../services/queue');
-const redis = require('../services/redis')
+const redis = require('../services/redis');
 const AppError = require('../utils/Apperror');
 
 exports.placeOrder = catchAsync(async (req, res, next) => {
@@ -35,7 +35,6 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
     total_value: order_mode === 'market' ? null : price * quantity,
   });
 
-  
   if (order_mode === 'market') {
     const redisListKey = `market-${order_type}-${stock_symbol}`;
     const orderData = {
@@ -47,7 +46,7 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
     };
 
     await redis.rpush(redisListKey, JSON.stringify(orderData)); // Push order to Redis list
-  
+
     await redis.publish('order_added', JSON.stringify({ stock_symbol }));
     // console.log(`Published event for new order: ${stock_symbol}`);
   }
@@ -55,5 +54,21 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
   res.status(201).json({
     message: 'Order placed successfully',
     order: newOrder,
+  });
+});
+
+exports.getOrderofUser = catchAsync(async (req, res, next) => {
+  const userid = req.user.id;
+  const status = req.params.status;
+  const orders = await Order.findAll({
+    where: {
+      user: userid,
+      status: status,
+    },
+  });
+
+  res.status(200).json({
+    success: true,
+    data: orders,
   });
 });

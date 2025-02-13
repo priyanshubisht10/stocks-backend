@@ -1,6 +1,13 @@
 const Redis = require('ioredis');
+const { Queue } = require('bullmq');
+
 const redis = new Redis({ host: '127.0.0.1', port: 6379 });
 const subscriber = new Redis({ host: '127.0.0.1', port: 6379 });
+
+// Initialize BullMQ queue for transactions
+const transactionQueue = new Queue('transactionQueue', {
+  connection: { host: '127.0.0.1', port: 6379 },
+});
 
 const processOrder = async (stock_symbol) => {
   console.log("Inside processOrder for:", stock_symbol);
@@ -20,8 +27,8 @@ const processOrder = async (stock_symbol) => {
     let buyData = JSON.parse(buyOrder);
     let sellData = JSON.parse(sellOrder);
 
-    console.log('📥 Buy Order:', buyData);
-    console.log('📤 Sell Order:', sellData);
+    // console.log('📥 Buy Order:', buyData);
+    // console.log('📤 Sell Order:', sellData);
 
     while (buyData.quantity > 0 && sellData.quantity > 0) {
       const tradeQuantity = Math.min(buyData.quantity, sellData.quantity);
@@ -33,12 +40,13 @@ const processOrder = async (stock_symbol) => {
         buyer: buyData.user,
         sellorderid: sellData.order_id,
         seller: sellData.user,
-        price: sellData.price, // Assume sell price is the execution price
+        price: null, // Assume sell price is the execution price
         quantity: tradeQuantity,
         trade_time: new Date().toISOString(),
       };
 
       console.log("🚀 Trade Executed:", transaction);
+      await transactionQueue.add('newTransaction', transaction);
 
       // Update remaining quantity
       buyData.quantity -= tradeQuantity;

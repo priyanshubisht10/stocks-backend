@@ -54,7 +54,7 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: DataTypes.NOW,
     },
     matched_order_id: {
-      type: DataTypes.UUID,
+      type: DataTypes.ARRAY(DataTypes.UUID),
       allowNull: true,
     },
     fees: {
