@@ -10,10 +10,8 @@ const requireAuth = require('../middlewares/requireAuth');
 router.post('/register', authController.signup);
 router.post('/login', authController.login);
 router.post('/pan-verify', authController.verifypan);
-  
-router.post('/add-amount',
-  // requireAuth.protect,
-  paymentController.getCheckoutSession);
+
+router.get('/profile', requireAuth.protect, userController.getUserProfile);
 
 router.get(
   '/',
@@ -21,6 +19,5 @@ router.get(
   requireAuth.restrictTo('admin'),
   userController.getUsers
 );
-
 
 module.exports = router;
