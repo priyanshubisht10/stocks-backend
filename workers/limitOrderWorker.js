@@ -53,6 +53,7 @@ async function matchLimitOrders(stock_symbol) {
          price: sellOrder.price, // Use the sell price as the execution price
          quantity: tradeQuantity,
          trade_time: new Date().toISOString(),
+         type: "limit",
       };
 
       console.log("🚀 Trade Executed:", transaction);

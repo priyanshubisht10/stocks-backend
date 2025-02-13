@@ -7,22 +7,32 @@ const finalTransactionQueue = new Queue('finalTransactionQueue', {
 });
 
 const marketPrices = {
-  JAE: 100.0,
-  MAE: 200.0,
+  AAPL: 100.0,
+  TSLA: 200.0,
 };
 
 const transactionWorker = new Worker(
   'transactionQueue',
   async (job) => {
+
     const transaction = job.data;
 
+    if (transaction.type === 'market') {
+      transaction.price = marketPrices[job.data.stock_symbol];
+      await finalTransactionQueue.add('finalTransaction', transaction);
+      console.log('📈 Updated Transaction:', transaction);
+    } else if (transaction.type === 'limit') {
+      marketPrices[job.data.stock_symbol] = transaction.price;
+      await finalTransactionQueue.add('finalTransaction', transaction);
+      console.log('📈 Updated Transaction:', transaction);
+    } else {
+      console.log('Error processing transaction at the exchange.');
+    }
+
     //console.log(job.data);
-    transaction.price = marketPrices[job.data.stock_symbol];
     // console.log(marketPrices[job.data.stock_symbol]);
     //console.log('📈 Updated Transaction:', transaction);
 
-    await finalTransactionQueue.add('finalTransaction', transaction);
-    console.log('📈 Updated Transaction:', transaction);
   },
   {
     connection: redisConnection,

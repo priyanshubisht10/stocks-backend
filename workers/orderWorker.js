@@ -43,6 +43,7 @@ const processOrder = async (stock_symbol) => {
         price: null, // Assume sell price is the execution price
         quantity: tradeQuantity,
         trade_time: new Date().toISOString(),
+        type: 'market',
       };
 
       console.log("🚀 Trade Executed:", transaction);
