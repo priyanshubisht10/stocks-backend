@@ -155,6 +155,14 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
 exports.getOrderofUser = catchAsync(async (req, res, next) => {
   const userid = req.user.id;
   const status = req.params.status;
+
+  console.log("User ID:", userid);
+  console.log("Status:", status);
+
+  if (!userid) {
+    return res.status(400).json({ success: false, message: "User ID is missing" });
+  }
+
   const orders = await Order.findAll({
     where: {
       user: userid,
@@ -167,3 +175,4 @@ exports.getOrderofUser = catchAsync(async (req, res, next) => {
     data: orders,
   });
 });
+
