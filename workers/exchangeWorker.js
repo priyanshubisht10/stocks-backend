@@ -13,8 +13,6 @@ const finalTransactionQueue = new Queue('finalTransactionQueue', {
 
 // Store latest market prices
 const marketPrices = {};
-
-// Local storage for high and low prices
 const highMarketPrices = {};
 const lowMarketPrices = {};
 
@@ -25,7 +23,7 @@ const loadLatestPrices = async () => {
   const stockSymbols = ['JAE', 'PB']; // Add all stock symbols here
   for (const symbol of stockSymbols) {
     const historyKey = `history:${symbol}`;
-    const highLowKey = `dayHighLow:${symbol}`;
+    const highLowKey = `dayStats:${symbol}`;
 
     // Fetch latest market price
     const latestEntry = await redisClient.zrevrange(historyKey, 0, 0);
@@ -38,10 +36,10 @@ const loadLatestPrices = async () => {
       marketPrices[symbol] = 100.0; // Default fallback price
     }
 
-    // Fetch existing high/low values from Redis
-    const storedHighLow = await redisClient.hgetall(highLowKey);
-    highMarketPrices[symbol] = storedHighLow.day_high ? parseFloat(storedHighLow.day_high) : marketPrices[symbol];
-    lowMarketPrices[symbol] = storedHighLow.day_low ? parseFloat(storedHighLow.day_low) : marketPrices[symbol];
+    // Fetch existing high/low/open/close values from Redis
+    const storedStats = await redisClient.hgetall(highLowKey);
+    highMarketPrices[symbol] = storedStats.day_high ? parseFloat(storedStats.day_high) : marketPrices[symbol];
+    lowMarketPrices[symbol] = storedStats.day_low ? parseFloat(storedStats.day_low) : marketPrices[symbol];
 
     console.log(`📊 Initial High/Low for ${symbol}: High=${highMarketPrices[symbol]}, Low=${lowMarketPrices[symbol]}`);
   }
@@ -60,8 +58,46 @@ const transactionWorker = new Worker(
     const stockSymbol = transaction.stock_symbol;
     const transactionPrice = transaction.price;
     const historyKey = `history:${stockSymbol}`;
-    const highLowKey = `dayHighLow:${stockSymbol}`;
+    const highLowKey = `dayStats:${stockSymbol}`;
     const timestamp = Date.now();
+
+    // 📌 Get today's date in YYYY-MM-DD format
+    const currentDate = new Date().toISOString().split('T')[0];
+
+    // Fetch existing stats from Redis
+    let storedStats = await redisClient.hgetall(highLowKey);
+    let lastUpdated = storedStats.last_updated || ''; // Last updated date
+    let openingPrice = storedStats.day_open ? parseFloat(storedStats.day_open) : null;
+    let closingPrice = storedStats.day_close ? parseFloat(storedStats.day_close) : null;
+    let prevDayOpen = storedStats.prev_day_open ? parseFloat(storedStats.prev_day_open) : null;
+    let prevDayClose = storedStats.prev_day_close ? parseFloat(storedStats.prev_day_close) : null;
+
+    // 📌 Reset stats at midnight and save yesterday's values
+    if (lastUpdated !== currentDate) {
+      console.log(`🔄 Resetting daily stats for ${stockSymbol}, new day detected.`);
+
+      // Save yesterday’s opening and closing before resetting
+      prevDayOpen = openingPrice;
+      prevDayClose = closingPrice;
+
+      openingPrice = null; // Reset opening price for today
+      closingPrice = null; // Reset closing price for today
+      highMarketPrices[stockSymbol] = transactionPrice;
+      lowMarketPrices[stockSymbol] = transactionPrice;
+    }
+
+    // 📌 Update only if order is a LIMIT order
+    if (transaction.type === 'limit') {
+      // Set the opening price only for the first limit order of the day
+      if (openingPrice === null) {
+        openingPrice = transactionPrice;
+        console.log(`🌅 Opening price set for ${stockSymbol}: ${openingPrice}`);
+      }
+
+      // Update closing price on every limit trade
+      closingPrice = transactionPrice;
+      console.log(`🌇 Closing price updated for ${stockSymbol}: ${closingPrice}`);
+    }
 
     if (transaction.type === 'market') {
       transaction.price = marketPrices[stockSymbol];
@@ -69,11 +105,11 @@ const transactionWorker = new Worker(
       console.log('📈 Updated Transaction:', transaction);
     } else if (transaction.type === 'limit') {
       // Update market price
-      marketPrices[stockSymbol] = transaction.price;
+      marketPrices[stockSymbol] = transactionPrice;
       await finalTransactionQueue.add('finalTransaction', transaction);
       console.log('📈 Updated Transaction:', transaction);
 
-      // Determine updated high/low prices using Math.max and Math.min
+      // Determine updated high/low prices
       const newHigh = Math.max(highMarketPrices[stockSymbol] || transactionPrice, transactionPrice);
       const newLow = Math.min(lowMarketPrices[stockSymbol] || transactionPrice, transactionPrice);
 
@@ -90,15 +126,28 @@ const transactionWorker = new Worker(
         timestamp,
         day_high: newHigh,
         day_low: newLow,
+        day_open: openingPrice,
+        day_close: closingPrice,
+        prev_day_open: prevDayOpen,
+        prev_day_close: prevDayClose,
       });
 
       await redisClient.zadd(historyKey, timestamp, stockUpdate);
       console.log(`📊 Stored in history:${stockSymbol} -> ${transactionPrice} at ${timestamp}`);
 
-      // Update Redis if high/low changed
-      if (highChanged || lowChanged) {
-        await redisClient.hset(highLowKey, 'day_high', newHigh, 'day_low', newLow);
-        console.log(`📈 Updated High/Low in Redis for ${stockSymbol}: High=${newHigh}, Low=${newLow}`);
+      // Update Redis if high/low changed or it's the first trade of the day
+      if (highChanged || lowChanged || lastUpdated !== currentDate) {
+        await redisClient.hset(
+          highLowKey,
+          'day_high', newHigh,
+          'day_low', newLow,
+          'day_open', openingPrice,
+          'day_close', closingPrice,
+          'prev_day_open', prevDayOpen,
+          'prev_day_close', prevDayClose,
+          'last_updated', currentDate
+        );
+        console.log(`📈 Updated Opening/Closing/High/Low in Redis for ${stockSymbol}: Open=${openingPrice}, Close=${closingPrice}, High=${newHigh}, Low=${newLow}`);
       }
 
       // Publish price update to stock channel
@@ -113,17 +162,3 @@ const transactionWorker = new Worker(
     connection: redisConnection,
   }
 );
-
-// Event listeners
-transactionWorker.on('completed', async(job) => {
-  console.log(`✅ Job completed successfully: ${job.id}`);
-  await job.remove()
-  console.log('job removed')
-});
-
-transactionWorker.on('failed', async(job, err) => {
-  console.error(`❌ Job failed: ${job.id}, Error: ${err.message}`);
-  await job.remove
-});
-
-console.log('📡 Third Worker Listening to Transactions...');

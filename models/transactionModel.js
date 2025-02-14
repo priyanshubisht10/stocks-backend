@@ -6,6 +6,10 @@ module.exports = (sequelize, DataTypes) => {
       primaryKey: true,
       allowNull: false,
     },
+    stock_symbol: { // ✅ Add this field to store the stock symbol
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     buy_order_id: {
       type: DataTypes.UUID,
       allowNull: false,
