@@ -1,6 +1,6 @@
 //app.js
 const express = require('express');
-
+const cors = require('cors')
 //Routes
 const userrouter = require('./routes/userRoutes');
 const stockRouter = require('./routes/stockRouter');
@@ -12,6 +12,7 @@ const paymentRouter = require('./routes/paymentRouter');
 const AppError = require('./utils/Apperror');
 
 const app = express();
+app.use(cors())
 
 app.use('/api/v1/webhooks', webhookRouter);
 //Routes
