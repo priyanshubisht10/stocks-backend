@@ -1,13 +1,17 @@
 
 const db = require('../services/db'); // Import your database models
 const redisClient = require('../services/redis')
+
+
 const getLatestMarketPrice = async (stockSymbol) => {
   const historyKey = `history:${stockSymbol}`;
   const latestEntry = await redisClient.zrevrange(historyKey, 0, 0);
 
   if (latestEntry.length) {
     const latestPriceData = JSON.parse(latestEntry[0]);
+    console.log(`got amount from redis ${stockSymbol} : ${latestPriceData.price}`)
     return latestPriceData.price;
+
   }
 
   // If no price is in Redis, get the initial price from the Stock model

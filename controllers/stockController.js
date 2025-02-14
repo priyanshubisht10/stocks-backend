@@ -1,6 +1,8 @@
 const catchAsync = require('../utils/catchasync');
 const AppError = require('../utils/Apperror');
 const Stock = require('../services/db').Stock;
+const getLatestMarketPrice = require('../utils/getMarketpricefromredis');
+const redisClient = require('../services/redis')
 
 exports.listNewStock = catchAsync(async (req, res, next) => {
   // console.log(req.body);
@@ -46,6 +48,7 @@ exports.listNewStock = catchAsync(async (req, res, next) => {
   });
 });
 
+
 exports.getStockDetails = catchAsync(async (req, res, next) => {
   const { stock_symbol } = req.params;
 
@@ -55,6 +58,21 @@ exports.getStockDetails = catchAsync(async (req, res, next) => {
 
   console.log(`Fetching details for stock: ${stock_symbol}`);
 
+  // ✅ Fetch latest current price from Redis (or fallback to DB)
+  const currentPrice = await getLatestMarketPrice(stock_symbol);
+
+  // ✅ Fetch previous day's opening and closing price from Redis
+  const redisKey = `dayStats:${stock_symbol}`;
+  const stockData = await redisClient.hgetall(redisKey);
+  
+  let prevDayOpen = stockData.prev_day_open ? parseFloat(stockData.prev_day_open) : null;
+  let prevDayClose = stockData.prev_day_close ? parseFloat(stockData.prev_day_close) : null;
+
+  if (prevDayOpen !== null && prevDayClose !== null) {
+    console.log(`Prev day open & close fetched from Redis for ${stock_symbol}`);
+  }
+
+  // ✅ Fetch from DB if Redis does not have prev_day_open/close
   const stock = await Stock.findOne({
     where: { stock_symbol },
     attributes: [
@@ -65,9 +83,6 @@ exports.getStockDetails = catchAsync(async (req, res, next) => {
       'volume',
       'sector',
       'exchange',
-      'current_price',
-      'day_high',
-      'day_low',
       'opening_price',
       'closing_price',
       'updated_at',
@@ -78,18 +93,38 @@ exports.getStockDetails = catchAsync(async (req, res, next) => {
     return next(new AppError(`Stock with symbol '${stock_symbol}' not found.`, 404));
   }
 
-  // Calculate price change percentage
-  const priceChange = stock.current_price - stock.closing_price;
-  const priceChangePercentage = ((priceChange / stock.closing_price) * 100).toFixed(2);
+  if (!prevDayOpen) {
+    prevDayOpen = stock.opening_price;
+    console.log(`Prev day open fetched from DB for ${stock_symbol}`);
+  }
+  if (!prevDayClose) {
+    prevDayClose = stock.closing_price;
+    console.log(`Prev day close fetched from DB for ${stock_symbol}`);
+  }
+
+  // ✅ Calculate price change percentage
+  const priceChange = currentPrice - prevDayClose;
+  const priceChangePercentage = ((priceChange / prevDayClose) * 100).toFixed(2);
 
   res.status(200).json({
     status: 'success',
     data: {
       stock: {
-        ...stock.toJSON(),
+        stock_symbol: stock.stock_symbol,
+        company_name: stock.company_name,
+        company_description: stock.company_description,
+        market_cap: stock.market_cap,
+        volume: stock.volume,
+        sector: stock.sector,
+        exchange: stock.exchange,
+        current_price: currentPrice,
+        prev_day_open: prevDayOpen, // ✅ Corrected opening price
+        prev_day_close: prevDayClose, // ✅ Corrected closing price
+        updated_at: stock.updated_at,
         price_change: priceChange.toFixed(2),
         price_change_percentage: `${priceChangePercentage}%`,
       },
     },
   });
 });
+
