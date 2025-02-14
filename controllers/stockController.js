@@ -64,7 +64,7 @@ exports.getStockDetails = catchAsync(async (req, res, next) => {
   // ✅ Fetch previous day's opening and closing price from Redis
   const redisKey = `dayStats:${stock_symbol}`;
   const stockData = await redisClient.hgetall(redisKey);
-  
+
   let prevDayOpen = stockData.prev_day_open ? parseFloat(stockData.prev_day_open) : null;
   let prevDayClose = stockData.prev_day_close ? parseFloat(stockData.prev_day_close) : null;
 
@@ -128,3 +128,43 @@ exports.getStockDetails = catchAsync(async (req, res, next) => {
   });
 });
 
+exports.getStockDataPoints = catchAsync(async (req, res, next) => {
+  const stockSymbol = req.params.stock_symbol;
+  console.log(stockSymbol);
+  
+
+  if (!stockSymbol) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Stock symbol is required',
+    });
+  }
+  const historyKey = `history:${stockSymbol}`;
+
+  const last30DataPoints = await redisClient.zrange(historyKey, -30, -1, 'WITHSCORES');
+
+  if (!last30DataPoints || last30DataPoints.length === 0) {
+    return res.status(404).json({
+      status: 'error',
+      message: 'No data found for the specified stock symbol',
+    });
+  }
+
+  const parsedData = [];
+  for (let i = 0; i < last30DataPoints.length; i += 2) {
+    const priceData = JSON.parse(last30DataPoints[i]); // Parse the stock update object
+    const timestamp = last30DataPoints[i + 1]; // Get the timestamp (score)
+    parsedData.push({
+      timestamp: new Date(parseInt(timestamp)).toLocaleString(), // Convert timestamp to a readable format
+      price: priceData.price, // Extract the price
+    });
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      stockSymbol,
+      history: parsedData,
+    },
+  });
+});
