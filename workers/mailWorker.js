@@ -35,8 +35,9 @@ emailWorker.on('failed', async (job, err) => {
   }
 });
 
-emailWorker.on('completed', (job) => {
+emailWorker.on('completed', async (job) => {
   console.log(`Job ${job.id} completed successfully.`);
+  await job.remove();
 });
 
 const dlQueueWorker = new Worker(
