@@ -17,6 +17,7 @@ exports.listNewStock = catchAsync(async (req, res, next) => {
     market_cap: req.body.market_cap,
     volume: req.body.volume,
     sector: req.body.sector,
+    stock_img_url: req.body.stock_img_url,
     exchange: req.body.exchange,
   };
 
@@ -49,11 +50,11 @@ exports.getStockDetails = catchAsync(async (req, res, next) => {
   const { stock_symbol } = req.params;
 
   if (!stock_symbol) {
-    return next(
-      new AppError('Please provide a stock symbol to fetch stock details.')
-    );
+    return next(new AppError('Please provide a stock symbol to fetch stock details.', 400));
   }
-  console.log(stock_symbol);
+
+  console.log(`Fetching details for stock: ${stock_symbol}`);
+
   const stock = await Stock.findOne({
     where: { stock_symbol },
     attributes: [
@@ -64,17 +65,31 @@ exports.getStockDetails = catchAsync(async (req, res, next) => {
       'volume',
       'sector',
       'exchange',
+      'current_price',
+      'day_high',
+      'day_low',
+      'opening_price',
+      'closing_price',
+      'updated_at',
     ],
   });
 
   if (!stock) {
-    return next(`Stock with symbol '${stock_symbol}' not found.`, 404);
+    return next(new AppError(`Stock with symbol '${stock_symbol}' not found.`, 404));
   }
+
+  // Calculate price change percentage
+  const priceChange = stock.current_price - stock.closing_price;
+  const priceChangePercentage = ((priceChange / stock.closing_price) * 100).toFixed(2);
 
   res.status(200).json({
     status: 'success',
     data: {
-      stock,
+      stock: {
+        ...stock.toJSON(),
+        price_change: priceChange.toFixed(2),
+        price_change_percentage: `${priceChangePercentage}%`,
+      },
     },
   });
 });

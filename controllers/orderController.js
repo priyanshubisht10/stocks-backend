@@ -1,9 +1,12 @@
 const Order = require('../services/db').Order;
 const User = require('../services/db').User;
+const DematAccount = require('../services/db').DematAccount;
 const { v4: uuidv4 } = require('uuid');
 const catchAsync = require('../utils/catchasync');
 const redis = require('../services/redis');
 const AppError = require('../utils/Apperror');
+const getLatestMarketPrice = require('../utils/getMarketpricefromredis')
+
 
 exports.placeOrder = catchAsync(async (req, res, next) => {
   const { stock_symbol, price, quantity, order_type, order_mode } = req.body;
@@ -30,6 +33,13 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
   if (!userRecord) {
     return next(new AppError('User not found', 404));
   }
+
+  const userAccount = await DematAccount.findOne({ where: { user_id: user } });
+
+  if (!userAccount) {
+    return next(new AppError('User wallet not found', 404));
+  }
+
 
   let updatedOwnedStocks = userRecord.owned_stocks || [];
 
@@ -60,6 +70,33 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
       { where: { id: user } }
     );
   }
+
+  //min balance check for bothmarket and limit
+
+  if (order_mode === 'market' && order_type === 'buy') {
+    const marketPrice = await getLatestMarketPrice(stock_symbol);
+    
+    const minRequiredBalance = marketPrice * quantity * 1.15; // Market price + 15%
+  
+    if (userAccount.balance < minRequiredBalance) {
+      return next(
+        new AppError(
+          `Your funds may be insufficient as the price is volatile. Consider maintaining at least ₹${minRequiredBalance.toFixed(2)}.`,
+          400
+        )
+      );
+    }
+  }
+
+
+  if (order_mode === 'limit' && order_type === 'buy') {
+    const totalCost = price * quantity;
+    if (userAccount.balance < totalCost) {
+      return next(new AppError('Insufficient funds to place limit order', 400));
+    }
+  }
+
+  //add market pricec check her e, with +-15% cap
 
   const newOrder = await Order.create({
     order_id: uuidv4(),
