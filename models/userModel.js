@@ -1,6 +1,5 @@
 const bcrypt = require('bcrypt');
 
-//userModel.js
 module.exports = (sequelize, DataTypes) => {
   const User = sequelize.define('User', {
     id: {
@@ -12,7 +11,7 @@ module.exports = (sequelize, DataTypes) => {
     role: {
       type: DataTypes.ENUM('admin', 'user'),
       allowNull: false,
-      default: 'user',
+      defaultValue: 'user',
     },
     email: {
       type: DataTypes.STRING,
@@ -102,10 +101,6 @@ module.exports = (sequelize, DataTypes) => {
         },
       },
     },
-    // account_balance: {
-    //   type: DataTypes.FLOAT,
-    //   defaultValue: 0.0,
-    // },
     total_portfolio_value: {
       type: DataTypes.FLOAT,
       defaultValue: 0.0,
@@ -113,6 +108,29 @@ module.exports = (sequelize, DataTypes) => {
     account_status: {
       type: DataTypes.ENUM('active', 'suspended', 'deactivated'),
       defaultValue: 'active',
+    },
+    owned_stocks: {
+      type: DataTypes.JSON, // Storing stocks as an array of objects [{symbol: 'AAPL', quantity: 10}, {symbol: 'TSLA', quantity: 5}]
+      allowNull: false,
+      defaultValue: [],
+      validate: {
+        isValidStockList(value) {
+          if (!Array.isArray(value)) {
+            throw new Error('Owned stocks must be an array.');
+          }
+          value.forEach((stock) => {
+            if (
+              !stock.symbol ||
+              typeof stock.symbol !== 'string' ||
+              !stock.quantity ||
+              typeof stock.quantity !== 'number' ||
+              stock.quantity < 0
+            ) {
+              throw new Error('Each stock must have a valid symbol and quantity.');
+            }
+          });
+        },
+      },
     },
   });
 

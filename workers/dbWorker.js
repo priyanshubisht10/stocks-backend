@@ -31,6 +31,7 @@ const dbWorker = new Worker(
         buy_user_id: job.data.buyer,
         sell_user_id: job.data.seller,
         price: job.data.price,
+        type : job.data.type,
         quantity: job.data.quantity,
         total_value: job.data.price * job.data.quantity,
         status: 'completed',
@@ -109,6 +110,30 @@ const dbWorker = new Worker(
         { balance: sellerAccount.balance + totalAmount },
         { where: { user_id: seller } }
       );
+
+
+      const buyerUser = await userModel.findByPk(buyer);
+      if (!buyerUser) throw new Error('Buyer user not found');
+
+      let ownedStocks = buyerUser.owned_stocks || [];
+
+      // Check if buyer already owns the stock
+      const stockIndex = ownedStocks.findIndex((stock) => stock.symbol === stock_symbol);
+      if (stockIndex !== -1) {
+        // If exists, update the quantity
+        ownedStocks[stockIndex].quantity += quantity;
+      } else {
+        // If not, add a new entry
+        ownedStocks.push({ symbol: stock_symbol, quantity });
+      }
+
+      // Update buyer's owned stocks
+      await userModel.update(
+        { owned_stocks: ownedStocks },
+        { where: { id: buyer } }
+      );
+
+      await job.remove();
 
       console.log(
         '✅ Transaction saved, orders updated, and accounts adjusted:',

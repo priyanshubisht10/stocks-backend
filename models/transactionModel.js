@@ -50,6 +50,11 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DECIMAL(15, 2),
       allowNull: false, // Calculated as quantity * price
     },
+    type :{
+      type: DataTypes.ENUM('limit', 'market'),
+      allowNull: false,
+      defaultValue: 'market',
+    },
     status: {
       type: DataTypes.ENUM('processing', 'completed', 'failed'),
       allowNull: false,
