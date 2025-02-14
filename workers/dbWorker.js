@@ -4,6 +4,7 @@ require('dotenv').config({ path: '../config.env' });
 const db = require('../services/db');
 
 const orderModel = db.Order;
+const userModel = db.User;
 const dematAccount = db.DematAccount;
 const transactionModel = db.Transaction;
 
@@ -133,7 +134,7 @@ const dbWorker = new Worker(
         { where: { id: buyer } }
       );
 
-      await job.remove();
+      
 
       console.log(
         '✅ Transaction saved, orders updated, and accounts adjusted:',
@@ -148,8 +149,10 @@ const dbWorker = new Worker(
   }
 );
 
-dbWorker.on('completed', (job) => {
+dbWorker.on('completed', async(job) => {
   console.log(`✅ Job completed successfully: ${job.id}`);
+  await job.remove()
+  console.log('job removed')
 });
 
 dbWorker.on('failed', (job, err) => {
