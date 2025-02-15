@@ -131,7 +131,7 @@ exports.getStockDetails = catchAsync(async (req, res, next) => {
 exports.getStockDataPoints = catchAsync(async (req, res, next) => {
   const stockSymbol = req.params.stock_symbol;
   console.log(stockSymbol);
-  
+
 
   if (!stockSymbol) {
     return res.status(400).json({
@@ -157,6 +157,8 @@ exports.getStockDataPoints = catchAsync(async (req, res, next) => {
     parsedData.push({
       timestamp: new Date(parseInt(timestamp)).toLocaleString(), // Convert timestamp to a readable format
       price: priceData.price, // Extract the price
+      day_high: priceData.day_high,
+      day_low: priceData.day_low,
     });
   }
 
