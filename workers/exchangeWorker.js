@@ -88,6 +88,19 @@ const transactionWorker = new Worker(
 
     // 📌 Update only if order is a LIMIT order
     if (transaction.type === 'limit') {
+      // Validate price band for limit orders
+      const currentMarketPrice = marketPrices[stockSymbol];
+      const priceBand = 0.03; // 3% price band
+      const upperLimit = currentMarketPrice * (1 + priceBand);
+      const lowerLimit = currentMarketPrice * (1 - priceBand);
+
+      if (transactionPrice > upperLimit || transactionPrice < lowerLimit) {
+        console.log(`❌ Limit order price (${transactionPrice}) is outside the 3% price band for ${stockSymbol}. Rejecting order.`);
+        transaction.status = 'rejected';
+        await finalTransactionQueue.add('finalTransaction', transaction);
+        return; // Reject the order
+      }
+
       // Set the opening price only for the first limit order of the day
       if (openingPrice === null) {
         openingPrice = transactionPrice;
@@ -101,11 +114,13 @@ const transactionWorker = new Worker(
 
     if (transaction.type === 'market') {
       transaction.price = marketPrices[stockSymbol];
+      transaction.status = 'passed';
       await finalTransactionQueue.add('finalTransaction', transaction);
       console.log('📈 Updated Transaction:', transaction);
     } else if (transaction.type === 'limit') {
       // Update market price
       marketPrices[stockSymbol] = transactionPrice;
+      transaction.status = 'passed';
       await finalTransactionQueue.add('finalTransaction', transaction);
       console.log('📈 Updated Transaction:', transaction);
 
@@ -155,6 +170,8 @@ const transactionWorker = new Worker(
       await redisPublisher.publish(stockChannel, stockUpdate);
       console.log(`📡 Published price update to ${stockChannel}:`, stockUpdate);
     } else {
+      transaction.status = 'rejected';
+      await finalTransactionQueue.add('finalTransaction', transaction);
       console.log('❌ Error processing transaction at the exchange.');
     }
   },
