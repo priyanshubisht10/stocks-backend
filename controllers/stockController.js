@@ -85,6 +85,7 @@ exports.getStockDetails = catchAsync(async (req, res, next) => {
       'exchange',
       'opening_price',
       'closing_price',
+      'stock_img_url',
       'updated_at',
     ],
   });
@@ -117,6 +118,7 @@ exports.getStockDetails = catchAsync(async (req, res, next) => {
         volume: stock.volume,
         sector: stock.sector,
         exchange: stock.exchange,
+        stock_img_url:stock.stock_img_url,
         current_price: currentPrice,
         prev_day_open: prevDayOpen, // ✅ Corrected opening price
         prev_day_close: prevDayClose, // ✅ Corrected closing price
@@ -170,3 +172,35 @@ exports.getStockDataPoints = catchAsync(async (req, res, next) => {
     },
   });
 });
+
+exports.getAllstocks = catchAsync(async (req, res, next) => {
+  // Retrieve stocks with only the required attributes
+  const stocks = await Stock.findAll({
+    attributes: ['stock_symbol','stock_img_url' ,'company_name', 'current_price', 'closing_price']
+  });
+
+  // Map over the retrieved stocks to calculate price change percentage
+  const stocksData = stocks.map(stock => {
+    const { stock_symbol,stock_img_url, company_name, current_price, closing_price } = stock;
+    // Calculate the price change percentage. If prev_day_closing is zero, set change to 0.
+    let price_change_percentage = 0;
+    if (closing_price !== 0) {
+      price_change_percentage = ((current_price - closing_price) / closing_price) * 100;
+    }
+
+    return {
+      stock_img_url,
+      stock_symbol,
+      company_name,
+      current_price,
+      price_change_percentage: Number(price_change_percentage.toFixed(2)) // rounding to 2 decimals
+    };
+  });
+
+  // Send the processed data as a JSON response
+  res.status(200).json({
+    status: "success",
+    data: stocksData
+  });
+});
+

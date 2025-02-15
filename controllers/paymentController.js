@@ -27,9 +27,9 @@ exports.getCheckoutSession = catchasync(async (req, res, next) => {
       },
     ],
     mode: 'payment',
-    success_url: `http://localhost:5137/success?session_id={CHECKOUT_SESSION_ID}`, // This should work fine for frontend redirects
+    success_url: `http://localhost:5137/success`, // This should work fine for frontend redirects
     cancel_url: `http://localhost:5137/cancel`,
-    metadata: { userId: userId}, // Corrected `userId`
+    metadata: { userId: userId }, // Corrected `userId`
   });
 
   // Store the initial payment intent in the database
@@ -52,5 +52,44 @@ exports.getCheckoutSession = catchasync(async (req, res, next) => {
   res.status(200).json({
     status: 'success',
     url: session.url,
+  });
+});
+
+exports.getBalance = catchasync(async (req, res, next) => {
+  const user_id = req.user.id;
+
+  // Find the demat account for the user
+  const dematAccount = await DematAccount.findOne({ where: { user_id } });
+
+  if (!dematAccount) {
+    return res
+      .status(404)
+      .json({ success: false, message: 'Demat account not found for user' });
+  }
+
+  res.status(200).json({ success: true, balance: dematAccount.balance });
+});
+
+exports.getpaymentforuser = catchasync(async (req, res, next) => {
+  // Get the authenticated user's ID
+  const userId = req.user.id;
+
+  // Retrieve all payment records for the user, ordering them by creation date (newest first)
+  const payments = await Payment.findAll({
+    where: { user_id: userId },
+    order: [['createdAt', 'DESC']],
+  });
+
+  // If no payments were found, you can choose to return an empty array or a message
+  if (!payments) {
+    return res
+      .status(404)
+      .json({ success: false, message: 'No payments found for this user' });
+  }
+
+  // Return the retrieved payment records in the response
+  res.status(200).json({
+    success: true,
+    payments,
   });
 });
