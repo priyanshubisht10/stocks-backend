@@ -19,127 +19,160 @@ const dbWorker = new Worker(
       seller,
       price,
       quantity,
+      status
     } = job.data;
     const totalAmount = price * quantity;
     const executionTime = new Date(); // Capture execution timestamp
 
     try {
-      console.log(job.data);
-      await transactionModel.create({
-        stock_symbol: job.data.stock_symbol,
-        buy_order_id: job.data.buyorderid,
-        sell_order_id: job.data.sellorderid,
-        buy_user_id: job.data.buyer,
-        sell_user_id: job.data.seller,
-        price: job.data.price,
-        type : job.data.type,
-        quantity: job.data.quantity,
-        total_value: job.data.price * job.data.quantity,
-        status: 'completed',
-      });
+      if (status === 'rejected') {
 
-      const buyOrder = await orderModel.findOne({
-        where: { order_id: buyorderid },
-      });
-      const sellOrder = await orderModel.findOne({
-        where: { order_id: sellorderid },
-      });
+        console.log(`❌ Transaction rejected for buyOrderId: ${buyorderid}, sellOrderId: ${sellorderid}`);
 
-      if (!buyOrder || !sellOrder)
-        throw new Error('Buy or Sell Order not found');
+        // Update buy and sell orders to reflect rejection
+        await orderModel.update(
+          { status: 'cancelled', execution_time: executionTime },
+          { where: { order_id: buyorderid } }
+        );
 
-      const updatedBuyMatchedOrders = buyOrder.matched_order_id
-        ? [...buyOrder.matched_order_id, sellorderid]
-        : [sellorderid];
+        await orderModel.update(
+          { status: 'cancelled', execution_time: executionTime },
+          { where: { order_id: sellorderid } }
+        );
 
-      const updatedSellMatchedOrders = sellOrder.matched_order_id
-        ? [...sellOrder.matched_order_id, buyorderid]
-        : [buyorderid];
-
-      const updatedBuyFilledQty = buyOrder.filled_quantity + quantity;
-      const updatedSellFilledQty = sellOrder.filled_quantity + quantity;
-
-      const buyOrderStatus =
-        updatedBuyFilledQty === buyOrder.quantity
-          ? 'completed'
-          : 'partially_filled';
-      const sellOrderStatus =
-        updatedSellFilledQty === sellOrder.quantity
-          ? 'completed'
-          : 'partially_filled';
-
-      await orderModel.update(
-        {
-          filled_quantity: updatedBuyFilledQty,
-          status: buyOrderStatus,
-          matched_order_id: updatedBuyMatchedOrders,
-          execution_time: executionTime, // Save execution timestamp
-          price: price,
+        // Log the rejection in the transaction table
+        await transactionModel.create({
+          stock_symbol,
+          buy_order_id: buyorderid,
+          sell_order_id: sellorderid,
+          buy_user_id: buyer,
+          sell_user_id: seller,
+          price,
+          type: job.data.type,
+          quantity,
           total_value: totalAmount,
-        },
-        { where: { order_id: buyorderid } }
-      );
+          status: 'failed',
+        });
 
-      await orderModel.update(
-        {
-          filled_quantity: updatedSellFilledQty,
-          status: sellOrderStatus,
-          matched_order_id: updatedSellMatchedOrders,
-          execution_time: executionTime, // Save execution timestamp
-          price: price,
-          total_value: totalAmount,
-        },
-        { where: { order_id: sellorderid } }
-      );
+        console.log(`📝 Rejected transaction logged in database for buyOrderId: ${buyorderid}, sellOrderId: ${sellorderid}`);
 
-      const buyerAccount = await dematAccount.findOne({
-        where: { user_id: buyer },
-      });
-      const sellerAccount = await dematAccount.findOne({
-        where: { user_id: seller },
-      });
+      } else if (status === 'passed') {
+        console.log(job.data);
+        await transactionModel.create({
+          stock_symbol: job.data.stock_symbol,
+          buy_order_id: job.data.buyorderid,
+          sell_order_id: job.data.sellorderid,
+          buy_user_id: job.data.buyer,
+          sell_user_id: job.data.seller,
+          price: job.data.price,
+          type: job.data.type,
+          quantity: job.data.quantity,
+          total_value: job.data.price * job.data.quantity,
+          status: 'completed',
+        });
 
-      if (!buyerAccount || !sellerAccount)
-        throw new Error('Buyer or seller Demat account not found');
+        const buyOrder = await orderModel.findOne({
+          where: { order_id: buyorderid },
+        });
+        const sellOrder = await orderModel.findOne({
+          where: { order_id: sellorderid },
+        });
 
-      await dematAccount.update(
-        { balance: buyerAccount.balance - totalAmount },
-        { where: { user_id: buyer } }
-      );
+        if (!buyOrder || !sellOrder)
+          throw new Error('Buy or Sell Order not found');
 
-      await dematAccount.update(
-        { balance: sellerAccount.balance + totalAmount },
-        { where: { user_id: seller } }
-      );
+        const updatedBuyMatchedOrders = buyOrder.matched_order_id
+          ? [...buyOrder.matched_order_id, sellorderid]
+          : [sellorderid];
+
+        const updatedSellMatchedOrders = sellOrder.matched_order_id
+          ? [...sellOrder.matched_order_id, buyorderid]
+          : [buyorderid];
+
+        const updatedBuyFilledQty = buyOrder.filled_quantity + quantity;
+        const updatedSellFilledQty = sellOrder.filled_quantity + quantity;
+
+        const buyOrderStatus =
+          updatedBuyFilledQty === buyOrder.quantity
+            ? 'completed'
+            : 'partially_filled';
+        const sellOrderStatus =
+          updatedSellFilledQty === sellOrder.quantity
+            ? 'completed'
+            : 'partially_filled';
+
+        await orderModel.update(
+          {
+            filled_quantity: updatedBuyFilledQty,
+            status: buyOrderStatus,
+            matched_order_id: updatedBuyMatchedOrders,
+            execution_time: executionTime, // Save execution timestamp
+            price: price,
+            total_value: totalAmount,
+          },
+          { where: { order_id: buyorderid } }
+        );
+
+        await orderModel.update(
+          {
+            filled_quantity: updatedSellFilledQty,
+            status: sellOrderStatus,
+            matched_order_id: updatedSellMatchedOrders,
+            execution_time: executionTime, // Save execution timestamp
+            price: price,
+            total_value: totalAmount,
+          },
+          { where: { order_id: sellorderid } }
+        );
+
+        const buyerAccount = await dematAccount.findOne({
+          where: { user_id: buyer },
+        });
+        const sellerAccount = await dematAccount.findOne({
+          where: { user_id: seller },
+        });
+
+        if (!buyerAccount || !sellerAccount)
+          throw new Error('Buyer or seller Demat account not found');
+
+        await dematAccount.update(
+          { balance: buyerAccount.balance - totalAmount },
+          { where: { user_id: buyer } }
+        );
+
+        await dematAccount.update(
+          { balance: sellerAccount.balance + totalAmount },
+          { where: { user_id: seller } }
+        );
 
 
-      const buyerUser = await userModel.findByPk(buyer);
-      if (!buyerUser) throw new Error('Buyer user not found');
+        const buyerUser = await userModel.findByPk(buyer);
+        if (!buyerUser) throw new Error('Buyer user not found');
 
-      let ownedStocks = buyerUser.owned_stocks || [];
+        let ownedStocks = buyerUser.owned_stocks || [];
 
-      // Check if buyer already owns the stock
-      const stockIndex = ownedStocks.findIndex((stock) => stock.symbol === stock_symbol);
-      if (stockIndex !== -1) {
-        // If exists, update the quantity
-        ownedStocks[stockIndex].quantity += quantity;
-      } else {
-        // If not, add a new entry
-        ownedStocks.push({ symbol: stock_symbol, quantity });
+        // Check if buyer already owns the stock
+        const stockIndex = ownedStocks.findIndex((stock) => stock.symbol === stock_symbol);
+        if (stockIndex !== -1) {
+          // If exists, update the quantity
+          ownedStocks[stockIndex].quantity += quantity;
+        } else {
+          // If not, add a new entry
+          ownedStocks.push({ symbol: stock_symbol, quantity });
+        }
+
+        // Update buyer's owned stocks
+        await userModel.update(
+          { owned_stocks: ownedStocks },
+          { where: { id: buyer } }
+        );
+
+        console.log(
+          '✅ Transaction saved, orders updated, and accounts adjusted:',
+          job.data
+        );
       }
 
-      // Update buyer's owned stocks
-      await userModel.update(
-        { owned_stocks: ownedStocks },
-        { where: { id: buyer } }
-      );
-
-      
-
-      console.log(
-        '✅ Transaction saved, orders updated, and accounts adjusted:',
-        job.data
-      );
     } catch (error) {
       console.error('❌ Database Worker Error:', error);
     }
@@ -149,7 +182,7 @@ const dbWorker = new Worker(
   }
 );
 
-dbWorker.on('completed', async(job) => {
+dbWorker.on('completed', async (job) => {
   console.log(`✅ Job completed successfully: ${job.id}`);
   await job.remove()
   console.log('job removed')
