@@ -10,10 +10,12 @@ router.get('/data-points/:stock_symbol',
 
 router.get('/:stock_symbol/', stockController.getStockDetails);
 
+
 router.post('/list-new-stock/',
    // authMiddleware.protect,
    // authMiddleware.restrictTo('admin'),
    stockController.listNewStock);
 
+router.get('/', stockController.getAllstocks);
 
 module.exports = router;

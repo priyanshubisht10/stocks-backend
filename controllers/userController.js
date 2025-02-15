@@ -85,3 +85,4 @@ exports.addToWishlist = catchasync(async (req, res, next) => {
     wishlist: wishlist,
   });
 });
+

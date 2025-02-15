@@ -97,6 +97,7 @@ exports.getTradeHistory = catchAsync(async (req, res, next) => {
       [Op.or]: [{ buy_user_id: userId }, { sell_user_id: userId }],
     },
     order: [['created_at', 'DESC']],
+    limit: 30,
   });
 
   let tradeHistory = transactions.map((transaction) => ({
