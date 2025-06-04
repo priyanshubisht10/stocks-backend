@@ -48,6 +48,8 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
     const stockIndex = updatedOwnedStocks.findIndex(
       (stock) => stock.symbol === stock_symbol
     );
+    console.log(updatedOwnedStocks, stockIndex);
+
 
     if (
       stockIndex === -1 ||
@@ -95,8 +97,6 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
       return next(new AppError('Insufficient funds to place limit order', 400));
     }
   }
-
-  //add market pricec check her e, with +-15% cap
 
   const newOrder = await Order.create({
     order_id: uuidv4(),

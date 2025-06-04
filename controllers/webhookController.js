@@ -31,7 +31,7 @@ exports.stripeWebhook = catchAsync(async (req, res) => {
 
     if (!payment) {
       console.error('Payment record not found for:', session.id);
-      return res.status(404).send('Payment not found.');
+      return res.status(404).send('Payment  not found.');
     }
 
     // Update payment status to 'succeeded' after payment confirmation

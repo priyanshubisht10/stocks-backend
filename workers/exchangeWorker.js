@@ -90,7 +90,7 @@ const transactionWorker = new Worker(
     if (transaction.type === 'limit') {
       // Validate price band for limit orders
       const currentMarketPrice = marketPrices[stockSymbol];
-      const priceBand = 0.03; // 3% price band
+      const priceBand = 0.5; // 3% price band
       const upperLimit = currentMarketPrice * (1 + priceBand);
       const lowerLimit = currentMarketPrice * (1 - priceBand);
 
@@ -117,7 +117,10 @@ const transactionWorker = new Worker(
       transaction.status = 'passed';
       await finalTransactionQueue.add('finalTransaction', transaction);
       console.log('📈 Updated Transaction:', transaction);
-    } else if (transaction.type === 'limit') {
+    } 
+    else if (transaction.type === 'limit') {
+
+      console.log("hit");
       // Update market price
       marketPrices[stockSymbol] = transactionPrice;
       transaction.status = 'passed';

@@ -27,7 +27,7 @@ exports.getCheckoutSession = catchasync(async (req, res, next) => {
       },
     ],
     mode: 'payment',
-    success_url: `http://localhost:5137/success`, // This should work fine for frontend redirects
+    success_url: `http://localhost:5173/dashboard/wallet`, // This should work fine for frontend redirects
     cancel_url: `http://localhost:5137/cancel`,
     metadata: { userId: userId }, // Corrected `userId`
   });
